@@ -1,14 +1,42 @@
 use rand::Rng;
 use rumqttc::{Client, Event, MqttOptions, Packet, QoS};
-use std::time::SystemTime;
+use serde::Deserialize;
+use std::{path::Path, time::SystemTime};
+
+#[derive(Debug, Deserialize)]
+struct Config {
+    pub host: String,
+    pub port: Option<u16>,
+}
 
 fn main() {
     env_logger::init();
 
     let start_time = SystemTime::now();
 
-    let mut iterator = std::env::args();
+    // read config from file
+    let config: Config = {
+        let home_config = std::env::var("HOME").unwrap() + "/.config/argv_to_mqtt/config.toml";
+        let paths = vec![
+            Path::new(&home_config),
+            Path::new("/etc/argv_to_mqtt/config.toml"),
+        ];
 
+        let file = paths
+            .iter()
+            .find(|item| item.exists())
+            .unwrap_or_else(|| panic!("no valid configuration file found in {:?}", paths));
+
+        log::debug!("about to read toml config file {:?}", file);
+        let file_contents = std::fs::read_to_string(file)
+            .expect("failure to read from config file (permission error?)");
+
+        log::debug!("about to parse toml config file:\n{}", file_contents);
+        toml::from_str(&file_contents).unwrap()
+    };
+    log::info!("using configuration {:#?}", config);
+
+    let mut iterator = std::env::args();
     let program = iterator.next().unwrap();
     let topic = format!(
         "argv_to_mqtt/{}",
@@ -29,7 +57,7 @@ fn main() {
     // Create a client & define connect options
     let mut rng = rand::thread_rng();
     let client_name = format!("argv_to_mqtt_{}", rng.gen::<u32>());
-    let mqttoptions = MqttOptions::new(client_name, "dns.mindflavor.it", 1883);
+    let mqttoptions = MqttOptions::new(client_name, config.host, config.port.unwrap_or(1883));
     let (mut client, mut connection) = Client::new(mqttoptions, 5);
 
     client
@@ -45,14 +73,14 @@ fn main() {
         match notification {
             Err(error) => {
                 log::error!("{}", error);
-                log::debug!("processing took {:?}", start_time.elapsed());
+                log::info!("processing took {:?}", start_time.elapsed());
                 panic!();
             }
             Ok(res) => {
                 log::debug!("{:?}", res);
                 match res {
                     Event::Incoming(Packet::PubComp(_)) => {
-                        log::debug!("processing took {:?}", start_time.elapsed());
+                        log::info!("processing took {:?}", start_time.elapsed());
                         return;
                     }
                     _ => {
