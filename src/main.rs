@@ -61,12 +61,7 @@ fn main() {
     let (mut client, mut connection) = Client::new(mqttoptions, 5);
 
     client
-        .publish(
-            format!("argv_to_mqtt/{}", topic),
-            QoS::ExactlyOnce,
-            false,
-            values_str,
-        )
+        .publish(topic, QoS::ExactlyOnce, false, values_str)
         .expect("failed to send MQTT message");
 
     for notification in connection.iter() {
