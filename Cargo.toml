@@ -1,0 +1,12 @@
+[package]
+authors = ["Francesco Cogno <francesco.cogno@outlook.com>"]
+edition = "2021"
+name = "argv_to_mqtt"
+version = "1.0.0"
+
+[dependencies]
+env_logger = "0.9"
+rumqttc = "0.11"
+log = "0.4"
+serde_json = "1.0"
+rand = "0.8"
