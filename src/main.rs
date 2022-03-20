@@ -16,15 +16,17 @@ fn main() {
 
     // read config from file
     let config: Config = {
-        let home_config = std::env::var("HOME").unwrap() + "/.config/argv_to_mqtt/config.toml";
-        let paths = vec![
-            Path::new(&home_config),
-            Path::new("/etc/argv_to_mqtt/config.toml"),
-        ];
+        let mut paths = Vec::new();
+        if let Ok(home_config) =
+            std::env::var("HOME").map(|home| home + "/.config/argv_to_mqtt/config.toml")
+        {
+            paths.push(home_config);
+        }
+        paths.push("/etc/argv_to_mqtt/config.toml".to_owned());
 
         let file = paths
             .iter()
-            .find(|item| item.exists())
+            .find(|item| Path::new(item).exists())
             .unwrap_or_else(|| panic!("no valid configuration file found in {:?}", paths));
 
         log::debug!("about to read toml config file {:?}", file);
